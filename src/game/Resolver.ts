@@ -37,7 +37,7 @@ export function resolveStep(
   const workingGrid = inputGrid.clone();
 
   const clearedKeySet = new Set<string>();
-  const spwanedThisStep = { kind: PowerupKind, at: Vec2 }[] = [];
+  const spawnedThisStep: { kind: PowerupKind, at: Vec2 }[] = [];
   let stepScore = 0;
 
   const width = gridWidth(workingGrid);
@@ -89,8 +89,8 @@ export function resolveStep(
     }
   }
 
-  applyGravity(workingGrid);
-  refillEmpties(workingGrid);
+  workingGrid.applyGravity();
+  workingGrid.refill();
 
   const clearedPositions: Vec2[] = [
     ...Array.from(clearedKeySet, key => {
@@ -150,4 +150,67 @@ function chooseAnchor(match: Match, resolveContext: ResolveContext): Vec2 {
   if (match.kind === "+") {
     return match.center ?? match.cells[Math.floor(match.cells.length / 2)];
   }
+
+  const target = resolveContext.lastSwap?.to;
+  if (target) {
+    let bestPoint = match.cells[0];
+    let bestDistance = squaredDistance(bestPoint, target);
+    for (const point of match.cells) {
+      const distance = squaredDistance(point, target);
+      if (distance < bestDistance) {
+        bestPoint = point;
+        bestDistance = distance;
+      }
+    }
+    return bestPoint;
+  }
+
+  return match.cells[Math.floor(match.cells.length / 2)];
+}
+
+function squaredDistance(a: Vec2, b: Vec2): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+
+function computeLaserBlast(grid: Grid, at: Vec2): Vec2[] {
+  const width = gridWidth(grid);
+  const out: Vec2[] = [];
+  for (let x = 0; x < width; x++) {
+    const point = { x, y: at.y};
+    const cell = grid.get(point.x, point.y);
+    if (cell.kind !== "unbreakable") out.push(point);
+  }
+  return out;
+}
+
+function computeBombBlast(grid: Grid, at: Vec2, radius: number): Vec2[] {
+  const width = gridWidth(grid);
+  const height = gridHeight(grid);
+  const out: Vec2[] = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const x = at.x + dx;
+      const y = at.y + dy;
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      const cell = grid.get(x, y);
+      if (cell.kind !== "unbreakable") out.push({ x, y });
+    }
+  }
+  return out;
+}
+
+export function applyColorSwapRow(inputGrid: Grid, row: number, color: Color): Grid {
+  const outGrid = inputGrid.clone();
+  const width = gridWidth(outGrid);
+  for (let x = 0; x < width; x++) {
+    const currentCell = outGrid.get(x, row);
+    if (currentCell.kind === "jelly") {
+      outGrid.set(x, row, { kind: "jelly", color });
+    } else if (currentCell.kind === "powerup") {
+      outGrid.set(x, row, { kind: "jelly", color });
+    }
+  }
+  return outGrid;
 }

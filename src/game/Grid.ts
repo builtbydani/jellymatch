@@ -79,7 +79,7 @@ export class Grid {
         if (movableTop <= movableBot) {
           const stack: Tile[] = [];
           for (let y = movableBot; y >= movableTop; y--) {
-            const currentCell = this.get(x, yy);
+            const currentCell = this.get(x, y);
             if (currentCell.kind !== "empty") stack.push(currentCell);
           }
 
