@@ -52,56 +52,87 @@ export function findLineMatches(grid: Grid): Match[] {
   return mergeOverlapsIntoPlus(matches);
 }
 
+
 function mergeOverlapsIntoPlus(matches: Match[]): Match[] {
   const lines = matches.filter(m => m.kind === "line");
   const byColor: Record<string, Match[]> = {};
   for (const m of lines) (byColor[m.color] ??= []).push(m);
 
-  const used = new Set<number>();
+  const used = new Set<Match>();
   const result: Match[] = [];
 
   const key = (x:number, y:number)=> x*1000 + y;
 
-  const cellsFor = (m: Match) => m.cells.map(c => key(c.x, c.y));
+  // Helpers to inspect line structure
+  const sortH = (cells: Vec2[]) => [...cells].sort((a,b)=>a.x-b.x);
+  const sortV = (cells: Vec2[]) => [...cells].sort((a,b)=>a.y-b.y);
 
   for (const color in byColor) {
     const ms = byColor[color];
+
     for (let i = 0; i < ms.length; i++) {
       for (let j = i + 1; j < ms.length; j++) {
         const a = ms[i];
         const b = ms[j];
         const aHor = isHorizontal(a);
         const bHor = isHorizontal(b);
-        if (aHor === bHor) continue;
-        const A = cellsFor(a);
-        const B = cellsFor(b);
-        const setA = new Set(A);
-        let cx: number | null = null;
-        let cy: number | null = null;
-        for (const kb of B) if (setA.has(kb)) { cx = Math.floor(kb / 1000); cy = kb % 1000; break; }
-        if (cx != null && cy != null) {
-          result.push({
-            kind: "+",
-            color: color as any,
-            cells: [...a.cells, ...b.cells],
-            center: { x: cx, y: cy }
-          });
-          used.add(i); used.add(j);
+        if (aHor === bHor) continue; // need one H and one V
+
+        const H = aHor ? a : b;
+        const V = aHor ? b : a;
+
+        // Build sets for fast intersection
+        const Hset = new Set(H.cells.map(c => key(c.x, c.y)));
+        const intersections: Vec2[] = [];
+        for (const c of V.cells) if (Hset.has(key(c.x, c.y))) intersections.push({x:c.x,y:c.y});
+
+        if (intersections.length === 0) continue;
+
+        // Prefer the intersection that’s truly in the middle of both lines (not an endpoint)
+        const Hsorted = sortH(H.cells);
+        const Vsorted = sortV(V.cells);
+
+        const isMiddleOfH = (p: Vec2) => {
+          const idx = Hsorted.findIndex(c => c.x===p.x && c.y===p.y);
+          return idx > 0 && idx < Hsorted.length - 1;
+        };
+        const isMiddleOfV = (p: Vec2) => {
+          const idx = Vsorted.findIndex(c => c.x===p.x && c.y===p.y);
+          return idx > 0 && idx < Vsorted.length - 1;
+        };
+
+        let center: Vec2 | null = null;
+        for (const p of intersections) {
+          if (isMiddleOfH(p) && isMiddleOfV(p)) { center = p; break; }
         }
+        // If none qualifies as a true center, don’t convert to plus—keep the lines.
+        if (!center) continue;
+
+        result.push({
+          kind: "+",
+          color: color as any,
+          cells: [...H.cells, ...V.cells],
+          center
+        });
+        used.add(a);
+        used.add(b);
       }
     }
   }
 
-  lines.forEach((m, idx) => { if (!used.has(idx)) result.push(m); });
+  // Keep all lines that were not merged into a plus
+  for (const m of lines) if (!used.has(m)) result.push(m);
+
   return result;
 }
+
 
 function isHorizontal(m: Match) {
   return m.cells.length >= 2 && m.cells.every(c => c.y === m.cells[0].y);
 }
 
 export function powerupForMatch(m: Match): Powerup {
-  if (m.kind === "+") return "colorswap";
+  if (m.kind === "+") return "colorSwap";
   const len = m.cells.length;
   if (len >= 5) return "bomb";
   if (len === 4) return "laser";
