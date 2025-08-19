@@ -2,64 +2,108 @@ import { COLORS, Color, Tile, Vec2 } from "./Types";
 import { RNG } from "./RNG";
 
 export class Grid {
-  readonly w: number;
-  readonly h: number;
+  readonly width: number;
+  readonly height: number;
+
   private cells: Tile[];
   private rng: RNG;
 
-  constructor(w: number, h: number, rng = new RNG(42)) {
-    this.w = w;
-    this.h = h;
+  constructor(width: number, height: number, rng = new RNG(42)) {
+    this.width = width;
+    this.height = height;
     this.rng = rng;
-    this.cells = new Array(w * h);
-    // fill with random jelly (TODO: Avoid initial matches)
+
+    this.cells = new Array(width * height);
+    // fill with random jelly (NOTE: initial matches okay for now; resolve later)
     for (let i = 0; i < this.cells.length; i++) {
-      this.cells[i] = { 
-        kind: "jelly",
-        color: COLORS[i + Math.floor(this.rng.next()*1000) % COLORS.length]
-      };
+      const color = COLORS[Math.floor(this.rng.next() * COLORS.length)];
+      this.cells[i] = { kind: "jelly", color };
     }
   }
 
-  index(x: number, y: number) { return y * this.w + x; }
-  inBounds(x: number, y: number) { return x >= 0 && x < this.w && y >= 0 && y < this.h; }
+  private index(x: number, y: number): number {
+    return y * this.width + x;
+  }
 
-  get(x: number, y: number): Tile{ return this.cells[this.index(x, y)]; }
-  set(x: number, y: number, t: Tile) { this.cells[this.index(x, y)] = t; }
+  inBounds(x: number, y: number): boolean {
+    return x >= 0 && x < this.width && y >= 0 && y < this.height;
+  }
 
-  setRow(y: number, tiles: Tile[]) {
-    if (tiles.length !== this.w) throw new Error("row length mismatch");
-    for (let x = 0; x < this.w; x++) this.set(x, y, tiles[x]);
+  get(x: number, y: number): Tile{
+    return this.cells[this.index(x, y)];
+  }
+
+  set(x: number, y: number, t: Tile) {
+    this.cells[this.index(x, y)] = t;
   }
 
   clone(): Grid {
-    const g = new Grid(this.w, this.h, this.rng);
-    g.cells = this.cells.map(t => ({ ...t }));
-    return g;
+    const cloned = new Grid(this.width, this.height, this.rng);
+    for (let i = 0; i < this.cells.length; i++) {
+      const cell = this.cells[i];
+      cloned.cells[i] = cell ? { ...cell } : cell;
+    }
+    return cloned;
   }
 
   swap(a: Vec2, b: Vec2) {
-    const ai = this.index(a.x, a.y);
-    const bi = this.index(b.x, b.y);
-    const tmp = this.cells[ai];
-    this.cells[ai] = this.cells[bi];
-    this.cells[bi] = tmp;
+    const indexA = this.index(a.x, a.y);
+    const indexB = this.index(b.x, b.y);
+    const temp = this.cells[indexA];
+    this.cells[indexA] = this.cells[indexB]
+    this.cells[indexB] = temp;
   }
 
-  /** drop jellies into empty spaces, spawn fresh at top **/
-  applyGravity() {
-    for (let x = 0; x < this.w; x++) {
-      let write = this.h - 1;
-      for (let y = this.h - 1; y >= 0; y--) {
-        const t = this.get(x, y);
-        if (t.kind === "jelly" && t.color) {
-          if (write !== y) this.set(x, write, t);
-          write--;
+  /**
+  * Apply gravity within column segments separated by unbreakables
+  * Moves non-empty tiles down; keeps unbreakables fixed;
+  * leaves "empty" above, then refill()
+  * */
+  applyGravity(): void {
+    for (let x = 0; x < this.width; x++) {
+      let scanRow = this.height - 1;
+
+      while (scanRow >= 0) {
+        let segBot = scanRow;
+        while (segBot >= 0 && this.get(x, segBot).kind === "unbreakable") {
+          segBot--;
+        }
+
+        let segTop = segBot;
+        while (segTop >= 0 && this.get(x, segTop).kind !== "unbreakable") {
+          segTop--;
+        }
+
+        const movableTop = segTop + 1;
+        const movableBot = segBot;
+        if (movableTop <= movableBot) {
+          const stack: Tile[] = [];
+          for (let y = movableBot; y >= movableTop; y--) {
+            const currentCell = this.get(x, yy);
+            if (currentCell.kind !== "empty") stack.push(currentCell);
+          }
+
+          let writeRow = movableBot;
+          for (const tile of stack) this.set(x, writeRow--, tile);
+          while (writeRow >= movableTop) this.set(x, writeRow--, { kind: "empty" });
+        }
+
+        scanRow = segTop;
+        while (scanRow >= 0 && this.get(x, scanRow).kind === "unbreakable") {
+          scanRow--;
         }
       }
-      for (let y = write; y >= 0; y--) {
-        const color = COLORS[Math.floor(Math.random()*COLORS.length)];
-        this.set(x, y, { kind: "jelly", color });
+    }
+  }
+
+  refill() {
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        const currentCell = this.get(x, y);
+        if (currentCell.kind === "empty") {
+          const color = COLORS[Math.floor(this.rng.next() * COLORS.length)];
+          this.set(x, y, { kind: "jelly", color });
+        }
       }
     }
   }
