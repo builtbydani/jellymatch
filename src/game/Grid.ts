@@ -29,7 +29,7 @@ export class Grid {
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
   }
 
-  get(x: number, y: number): Tile{
+  get(x: number, y: number): Tile {
     return this.cells[this.index(x, y)];
   }
 
@@ -97,8 +97,8 @@ export class Grid {
   }
 
   refill() {
-    for (let y = 0; y < this.h; y++) {
-      for (let x = 0; x < this.w; x++) {
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
         const currentCell = this.get(x, y);
         if (currentCell.kind === "empty") {
           const color = COLORS[Math.floor(this.rng.next() * COLORS.length)];

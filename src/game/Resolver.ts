@@ -1,5 +1,6 @@
 import { Grid } from "./Grid";
 import { Match, PowerupKind, Vec2, Color } from "./Types";
+import { findLineMatches } from "./Rules";
 
 function gridWidth(grid: Grid): number {
   return (grid as any).width;
@@ -123,7 +124,7 @@ export function resolveAll(
   const steps: ResolveResult[] = [];
 
   while (true) {
-    const foundMatches = findMatches(workingGrid);
+    const foundMatches = findLineMatches(workingGrid);
     if (foundMatches.length === 0) break;
 
     const step = resolveStep(workingGrid, foundMatches, resolveContext);

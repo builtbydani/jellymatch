@@ -17,7 +17,7 @@ export type Tile = {
 };
 
 export type Match = {
-  kind: MathchKind;
+  kind: MatchKind;
   color: Color;
   cells: Vec2[];
   center?: Vec2;

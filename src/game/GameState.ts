@@ -1,4 +1,4 @@
-import { Grid } from "./Types";
+import { Grid } from "./Grid";
 import { RNG } from "./RNG";
 import { scoreBatch, type ScoreEvent } from "./Scoring";
 import { scoreToLevel, desiredGridSizeForLevel, maybeSpawnUnbreakables } from "./Level";

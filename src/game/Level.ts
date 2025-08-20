@@ -1,5 +1,6 @@
-import { Grid, Cell, Vec2 } from "./Types";
+import { Tile, Vec2 } from "./Types";
 import { RNG } from "./RNG";
+import { Grid } from "./Grid";
 
 // ---------- Tuning ------------
 export const LEVEL_TUNING = {
@@ -49,8 +50,8 @@ function canPlace2x2(grid: Grid, topLeft: Vec2): boolean {
   if (x + 1 >= grid.width || y + 1 >= grid.height) return false;
   for (let dy = 0; dy < 2; dy++) {
     for (let dx = 0; dx < 2; dx++) {
-      const cell = grid.get(x + dx, y + dy);
-      if (cell.kind === "unbreakable") return false;
+      const tile = grid.get(x + dx, y + dy);
+      if (tile.kind === "unbreakable") return false;
     }
   }
   return true;
@@ -59,7 +60,7 @@ function canPlace2x2(grid: Grid, topLeft: Vec2): boolean {
 export function place2x2Unbreakable(grid: Grid, topLeft: Vec2): void {
   for (let dy = 0; dy < 2; dy++) {
     for (let dx = 0; dx < 2; dx++) {
-      grid.set(topLeft.x + dx, topLeft.y + dy, { kind: "unbreakable" } as Cell);
+      grid.set(topLeft.x + dx, topLeft.y + dy, { kind: "unbreakable" } as Tile);
     }
   }
 }

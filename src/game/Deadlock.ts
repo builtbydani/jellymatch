@@ -1,10 +1,11 @@
 import { RNG } from "./RNG";
-import { Grid, Cell, Vec2 } from "./Types";
+import { Tile, Vec2 } from "./Types";
+import { Grid } from "./Grid";
 
 export type GetMatches = (grid: Grid) => Array<{ positions: Vec2[] }>;
 
-function canSwapCells(cellA: Cell, cellB: Cell): boolean {
-  if (cellA.kind === "unbreakable" || cellB.kind === "unbreakable") return false;
+function canSwapCells(tileA: Tile, tileB: Tile): boolean {
+  if (tileA.kind === "unbreakable" || tileB.kind === "unbreakable") return false;
   return true;
 }
 
@@ -24,11 +25,11 @@ export function findFirstLegalSwap(
       const right = { x: x + 1, y };
       const down = { x, y: y + 1 };
 
-      const currentCell = grid.get(x, y);
+      const currentTile = grid.get(x, y);
 
       if (x + 1 < grid.width) {
-        const rightCell = grid.get(x + 1, y);
-        if (canSwapCells(currentCell, rightCell)) {
+        const rightTile = grid.get(x + 1, y);
+        if (canSwapCells(currentTile, rightTile)) {
           swapInGrid(grid, current, right);
           const makesMatch = getMatches(grid).length > 0;
           swapInGrid(grid, current, right);
@@ -37,8 +38,8 @@ export function findFirstLegalSwap(
       }
 
       if (y + 1 < grid.height) {
-        const downCell = grid.get(x, y + 1);
-        if (canSwapCells(currentCell, downCell)) {
+        const downTile = grid.get(x, y + 1);
+        if (canSwapCells(currentTile, downTile)) {
           swapInGrid(grid, current, down);
           const makesMatch = getMatches(grid).length > 0;
           swapInGrid(grid, current, down);
@@ -54,8 +55,8 @@ export function hasAnyLegalSwap(grid: Grid, getMatches: GetMatches): boolean {
   return findFirstLegalSwap(grid, getMatches) !== null;
 }
 
-function isMovable(cell: Cell): boolean {
-  return cell.kind !== "unbreakable";
+function isMovable(tile: Tile): boolean {
+  return tile.kind !== "unbreakable";
 }
 
 function collectMovableCoords(grid: Grid): Vec2[] {
@@ -93,7 +94,7 @@ export function reshuffleInPlace(
   const coords = collectMovableCoords(grid);
   if (coords.length < 2) return false; // nothing to shuffle
 
-  const extracted: Cell[] = coords.map(({ x, y }) => grid.get(x, y));
+  const extracted: Tile[] = coords.map(({ x, y }) => grid.get(x, y));
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     fisherYates(extracted, rng);
